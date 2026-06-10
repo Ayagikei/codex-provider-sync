@@ -33,7 +33,9 @@ Windows 用户优先下载 Release 里的 `CodexProviderSync.exe`：
 3. 选择目标 Provider
 4. 点击 `Execute`
 
-macOS 等环境使用 CLI：
+macOS 用户可使用 Avalonia 桌面版，构建说明见 [README_MAC_GUI_ZH.md](docs/README_MAC_GUI_ZH.md)。
+
+其它环境使用 CLI：
 
 ```bash
 npm install -g git+https://github.com/Dailin521/codex-provider-sync.git
@@ -98,7 +100,7 @@ codex-provider prune-backups --keep 5
 - 如果活跃会话锁住 rollout 文件，工具会跳过该文件并继续处理其它历史会话。
 - 如果 EXE 双击无反应，先确认已解压，再查看 `%AppData%\codex-provider-sync\startup-error.log`，或在 PowerShell 里运行 `./CodexProviderSync.exe`。
 
-GUI 说明见 [README_GUI_ZH.md](docs/README_GUI_ZH.md)。AI / Agent 说明见 [AGENTS.md](AGENTS.md)。
+Windows GUI 说明见 [README_GUI_ZH.md](docs/README_GUI_ZH.md)，macOS GUI 说明见 [README_MAC_GUI_ZH.md](docs/README_MAC_GUI_ZH.md)。AI / Agent 说明见 [AGENTS.md](AGENTS.md)。
 
 ## 开发
 
@@ -108,6 +110,7 @@ cd codex-provider-sync
 npm test
 dotnet test desktop/CodexProviderSync.Core.Tests/CodexProviderSync.Core.Tests.csproj
 pwsh ./scripts/publish-gui.ps1
+./scripts/publish-gui-macos.sh
 ```
 
 ## License

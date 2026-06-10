@@ -159,6 +159,7 @@ public sealed class AppSettings
     public string? LastSelectedProvider { get; init; }
     public string? LastBackupDirectory { get; init; }
     public int BackupRetentionCount { get; init; } = AppConstants.DefaultBackupRetentionCount;
+    public string UiLanguage { get; init; } = "en";
     public WindowBoundsState? WindowBounds { get; init; }
 }
 

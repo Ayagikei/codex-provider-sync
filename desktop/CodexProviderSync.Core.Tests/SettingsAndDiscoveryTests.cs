@@ -13,7 +13,8 @@ public sealed class SettingsAndDiscoveryTests
             SavedProviders = ["apigather"],
             ManualProviders = ["custom-a"],
             LastSelectedProvider = "apigather",
-            BackupRetentionCount = 7
+            BackupRetentionCount = 7,
+            UiLanguage = "zh-Hans"
         };
 
         await service.SaveAsync(settings);
@@ -23,6 +24,7 @@ public sealed class SettingsAndDiscoveryTests
         Assert.Contains("custom-a", loaded.ManualProviders);
         Assert.Equal("apigather", loaded.LastSelectedProvider);
         Assert.Equal(7, loaded.BackupRetentionCount);
+        Assert.Equal("zh-Hans", loaded.UiLanguage);
     }
 
     [Fact]

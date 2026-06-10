@@ -6,6 +6,8 @@
 
 如果你不想装 Node、不想打开 PowerShell，也不想记命令，直接下载发布页里的 `CodexProviderSync.exe` 双击运行即可。
 
+macOS 桌面版说明见 [README_MAC_GUI_ZH.md](README_MAC_GUI_ZH.md)。
+
 ## 它能做什么
 
 - 检测当前 `.codex` 下的 root provider

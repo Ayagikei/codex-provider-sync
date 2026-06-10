@@ -66,6 +66,7 @@ public sealed class SettingsService
             LastSelectedProvider = settings.LastSelectedProvider,
             LastBackupDirectory = settings.LastBackupDirectory,
             BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
             WindowBounds = settings.WindowBounds
         };
     }
@@ -81,6 +82,7 @@ public sealed class SettingsService
             LastSelectedProvider = settings.LastSelectedProvider,
             LastBackupDirectory = settings.LastBackupDirectory,
             BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
             WindowBounds = settings.WindowBounds
         };
     }
@@ -96,6 +98,7 @@ public sealed class SettingsService
             LastSelectedProvider = providerId,
             LastBackupDirectory = settings.LastBackupDirectory,
             BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
             WindowBounds = settings.WindowBounds
         };
     }
@@ -111,6 +114,23 @@ public sealed class SettingsService
             LastSelectedProvider = string.Equals(settings.LastSelectedProvider, providerId, StringComparison.Ordinal) ? null : settings.LastSelectedProvider,
             LastBackupDirectory = settings.LastBackupDirectory,
             BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
+            WindowBounds = settings.WindowBounds
+        };
+    }
+
+    public AppSettings UpdateUiLanguage(AppSettings settings, string uiLanguage)
+    {
+        return new AppSettings
+        {
+            RecentCodexHomes = Deduplicate(settings.RecentCodexHomes).ToList(),
+            LastCodexHome = settings.LastCodexHome,
+            SavedProviders = Deduplicate(settings.SavedProviders).ToList(),
+            ManualProviders = Deduplicate(settings.ManualProviders).ToList(),
+            LastSelectedProvider = settings.LastSelectedProvider,
+            LastBackupDirectory = settings.LastBackupDirectory,
+            BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(uiLanguage),
             WindowBounds = settings.WindowBounds
         };
     }
@@ -131,6 +151,7 @@ public sealed class SettingsService
             LastSelectedProvider = string.IsNullOrWhiteSpace(selectedProvider) ? settings.LastSelectedProvider : selectedProvider.Trim(),
             LastBackupDirectory = string.IsNullOrWhiteSpace(backupDirectory) ? settings.LastBackupDirectory : Path.GetFullPath(backupDirectory),
             BackupRetentionCount = NormalizeBackupRetentionCount(backupRetentionCount ?? settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
             WindowBounds = bounds ?? settings.WindowBounds
         };
     }
@@ -146,6 +167,7 @@ public sealed class SettingsService
             LastSelectedProvider = string.IsNullOrWhiteSpace(settings.LastSelectedProvider) ? null : settings.LastSelectedProvider.Trim(),
             LastBackupDirectory = string.IsNullOrWhiteSpace(settings.LastBackupDirectory) ? null : Path.GetFullPath(settings.LastBackupDirectory),
             BackupRetentionCount = NormalizeBackupRetentionCount(settings.BackupRetentionCount),
+            UiLanguage = NormalizeUiLanguage(settings.UiLanguage),
             WindowBounds = settings.WindowBounds
         };
     }
@@ -171,5 +193,10 @@ public sealed class SettingsService
     private static int NormalizeBackupRetentionCount(int value)
     {
         return value < 1 ? AppConstants.DefaultBackupRetentionCount : value;
+    }
+
+    private static string NormalizeUiLanguage(string? value)
+    {
+        return string.Equals(value, "zh-Hans", StringComparison.Ordinal) ? "zh-Hans" : "en";
     }
 }
