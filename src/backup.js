@@ -4,13 +4,14 @@ import path from "node:path";
 import {
   BACKUP_NAMESPACE,
   DB_FILE_BASENAME,
+  DB_FILE_RELATIVE_PATHS,
   DEFAULT_BACKUP_RETENTION_COUNT,
   defaultBackupRoot,
   GLOBAL_STATE_BACKUP_FILE_BASENAME,
   GLOBAL_STATE_FILE_BASENAME
 } from "./constants.js";
 import { assertSessionFilesWritable, restoreSessionChanges } from "./session-files.js";
-import { assertSqliteWritable } from "./sqlite-state.js";
+import { assertSqliteWritable, resolveStateDbPath } from "./sqlite-state.js";
 
 function timestampSlug(date = new Date()) {
   return date.toISOString().replaceAll(":", "").replaceAll("-", "").replace(".", "");
@@ -22,6 +23,7 @@ async function copyIfPresent(sourcePath, destinationPath) {
   } catch {
     return false;
   }
+  await fs.mkdir(path.dirname(destinationPath), { recursive: true });
   await fs.copyFile(sourcePath, destinationPath);
   return true;
 }
@@ -34,6 +36,15 @@ async function backupGlobalStateFiles(codexHome, backupDir) {
   for (const fileName of [GLOBAL_STATE_FILE_BASENAME, GLOBAL_STATE_BACKUP_FILE_BASENAME]) {
     await copyIfPresent(path.join(codexHome, fileName), path.join(backupDir, fileName));
   }
+}
+
+function getBackedUpDbRelativePath(dbFiles) {
+  for (const fileName of dbFiles ?? []) {
+    if (fileName.endsWith(DB_FILE_BASENAME)) {
+      return fileName;
+    }
+  }
+  return DB_FILE_BASENAME;
 }
 
 export async function restoreGlobalStateFilesFromBackup(backupDir, codexHome) {
@@ -55,11 +66,13 @@ export async function createBackup({
   await fs.mkdir(dbDir, { recursive: true });
 
   const copiedDbFiles = [];
+  const resolvedDb = await resolveStateDbPath(codexHome);
+  const dbRelativePath = resolvedDb?.relativePath ?? DB_FILE_RELATIVE_PATHS[0];
   for (const suffix of ["", "-shm", "-wal"]) {
-    const fileName = `${DB_FILE_BASENAME}${suffix}`;
-    const copied = await copyIfPresent(path.join(codexHome, fileName), path.join(dbDir, fileName));
+    const relativePath = `${dbRelativePath}${suffix}`;
+    const copied = await copyIfPresent(path.join(codexHome, relativePath), path.join(dbDir, relativePath));
     if (copied) {
-      copiedDbFiles.push(fileName);
+      copiedDbFiles.push(relativePath);
     }
   }
 
@@ -194,13 +207,15 @@ export async function restoreBackup(backupDir, codexHome, options = {}) {
 
     const dbDir = path.join(backupDir, "db");
     const backedUpFiles = new Set(metadata.dbFiles ?? []);
+    const relativeDbPath = getBackedUpDbRelativePath(metadata.dbFiles);
     for (const suffix of ["", "-shm", "-wal"]) {
-      const fileName = `${DB_FILE_BASENAME}${suffix}`;
-      if (!backedUpFiles.has(fileName)) {
-        await removeIfPresent(path.join(codexHome, fileName));
+      const relativePath = `${relativeDbPath}${suffix}`;
+      if (!backedUpFiles.has(relativePath)) {
+        await removeIfPresent(path.join(codexHome, relativePath));
       }
     }
     for (const fileName of metadata.dbFiles ?? []) {
+      await fs.mkdir(path.dirname(path.join(codexHome, fileName)), { recursive: true });
       await copyIfPresent(path.join(dbDir, fileName), path.join(codexHome, fileName));
     }
   }

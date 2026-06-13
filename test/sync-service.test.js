@@ -94,8 +94,9 @@ async function writeGlobalState(codexHome, value) {
   await fs.writeFile(path.join(codexHome, ".codex-global-state.json.bak"), text, "utf8");
 }
 
-async function writeStateDb(codexHome, rows) {
-  const dbPath = path.join(codexHome, "state_5.sqlite");
+async function writeStateDb(codexHome, rows, relativeDbPath = "state_5.sqlite") {
+  const dbPath = path.join(codexHome, relativeDbPath);
+  await fs.mkdir(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   try {
     db.exec(`
@@ -297,6 +298,42 @@ test("runSync rewrites rollout files and sqlite, then restore reverts both", asy
   const restoredArchived = await fs.readFile(archivedPath, "utf8");
   assert.match(restoredSession, /"model_provider":"apigather"/);
   assert.match(restoredArchived, /"model_provider":"newapi"/);
+});
+
+test("runSync prefers the active sqlite state directory over the legacy root database", async () => {
+  const { codexHome } = await makeTempCodexHome();
+  await writeConfig(codexHome, 'model_provider = "duckcoding"');
+  const sessionPath = path.join(codexHome, "sessions", "2026", "03", "19", "rollout-active-db.jsonl");
+  await writeRollout(sessionPath, "thread-active", "anyrouter");
+  await writeStateDb(codexHome, [
+    { id: "thread-legacy", model_provider: "anyrouter", archived: false }
+  ]);
+  await writeStateDb(codexHome, [
+    { id: "thread-active", model_provider: "anyrouter", archived: false }
+  ], path.join("sqlite", "state_5.sqlite"));
+
+  const syncResult = await runSync({ codexHome });
+
+  assert.equal(syncResult.sqliteRowsUpdated, 1);
+  const activeDb = new DatabaseSync(path.join(codexHome, "sqlite", "state_5.sqlite"));
+  try {
+    assert.equal(
+      activeDb.prepare("SELECT model_provider FROM threads WHERE id = ?").get("thread-active").model_provider,
+      "duckcoding"
+    );
+  } finally {
+    activeDb.close();
+  }
+  const legacyDb = new DatabaseSync(path.join(codexHome, "state_5.sqlite"));
+  try {
+    assert.equal(
+      legacyDb.prepare("SELECT model_provider FROM threads WHERE id = ?").get("thread-legacy").model_provider,
+      "anyrouter"
+    );
+  } finally {
+    legacyDb.close();
+  }
+  await fs.access(path.join(syncResult.backupDir, "db", "sqlite", "state_5.sqlite"));
 });
 
 test("runSync reports stage progress and backup duration", async () => {

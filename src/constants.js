@@ -5,6 +5,10 @@ export const DEFAULT_PROVIDER = "openai";
 export const DEFAULT_LOCK_NAME = "provider-sync.lock";
 export const BACKUP_NAMESPACE = "provider-sync";
 export const DB_FILE_BASENAME = "state_5.sqlite";
+export const DB_FILE_RELATIVE_PATHS = [
+  path.join("sqlite", DB_FILE_BASENAME),
+  DB_FILE_BASENAME
+];
 export const GLOBAL_STATE_FILE_BASENAME = ".codex-global-state.json";
 export const GLOBAL_STATE_BACKUP_FILE_BASENAME = ".codex-global-state.json.bak";
 export const DEFAULT_BACKUP_RETENTION_COUNT = 5;

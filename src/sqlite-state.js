@@ -2,12 +2,28 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { DB_FILE_BASENAME } from "./constants.js";
+import { DB_FILE_BASENAME, DB_FILE_RELATIVE_PATHS } from "./constants.js";
 
 const DEFAULT_BUSY_TIMEOUT_MS = 5000;
 
 export function stateDbPath(codexHome) {
-  return path.join(codexHome, DB_FILE_BASENAME);
+  return path.join(codexHome, DB_FILE_RELATIVE_PATHS[0]);
+}
+
+export async function resolveStateDbPath(codexHome) {
+  for (const relativePath of DB_FILE_RELATIVE_PATHS) {
+    const fullPath = path.join(codexHome, relativePath);
+    try {
+      await fs.access(fullPath);
+      return {
+        path: fullPath,
+        relativePath
+      };
+    } catch {
+      // Try the next known Codex state DB location.
+    }
+  }
+  return null;
 }
 
 function openDatabase(dbPath) {
@@ -63,16 +79,14 @@ export function wrapSqliteMalformedError(error, action) {
 }
 
 export async function readSqliteProviderCounts(codexHome) {
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     return null;
   }
 
   let db;
   try {
-    db = openDatabase(dbPath);
+    db = openDatabase(resolved.path);
     const rows = db.prepare(`
       SELECT
         CASE
@@ -118,16 +132,14 @@ export async function readSqliteProviderCounts(codexHome) {
 }
 
 export async function readSqliteRepairStats(codexHome, options = {}) {
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     return null;
   }
 
   let db;
   try {
-    db = openDatabase(dbPath);
+    db = openDatabase(resolved.path);
     let userEventRowsNeedingRepair = 0;
     if (tableHasColumn(db, "threads", "has_user_event") && options.userEventThreadIds?.size) {
       const stmt = db.prepare("SELECT has_user_event FROM threads WHERE id = ?");
@@ -168,16 +180,14 @@ export async function readSqliteRepairStats(codexHome, options = {}) {
 }
 
 export async function assertSqliteWritable(codexHome, options = {}) {
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     return { databasePresent: false };
   }
 
   let db;
   try {
-    db = openDatabase(dbPath);
+    db = openDatabase(resolved.path);
     setBusyTimeout(db, options.busyTimeoutMs);
     db.exec("BEGIN IMMEDIATE");
     db.exec("ROLLBACK");
@@ -198,10 +208,8 @@ export async function updateSqliteProvider(codexHome, targetProvider, afterUpdat
     ? (maybeOptions ?? {})
     : (afterUpdateOrOptions ?? {});
 
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     if (afterUpdate) {
       await afterUpdate({
         updatedRows: 0,
@@ -223,7 +231,7 @@ export async function updateSqliteProvider(codexHome, targetProvider, afterUpdat
   let db;
   let transactionOpen = false;
   try {
-    db = openDatabase(dbPath);
+    db = openDatabase(resolved.path);
     setBusyTimeout(db, options.busyTimeoutMs);
     db.exec("BEGIN IMMEDIATE");
     transactionOpen = true;

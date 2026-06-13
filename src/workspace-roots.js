@@ -7,7 +7,7 @@ import {
   GLOBAL_STATE_FILE_BASENAME
 } from "./constants.js";
 import {
-  stateDbPath,
+  resolveStateDbPath,
   wrapSqliteBusyError,
   wrapSqliteMalformedError
 } from "./sqlite-state.js";
@@ -164,16 +164,14 @@ function copyResolvedObjectKeys(input, cwdStats) {
 }
 
 export async function readThreadCwdStats(codexHome) {
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     return [];
   }
 
   let db;
   try {
-    db = new DatabaseSync(dbPath, { readOnly: true });
+    db = new DatabaseSync(resolved.path, { readOnly: true });
     if (!tableHasColumn(db, "threads", "cwd")) {
       return [];
     }
@@ -258,10 +256,8 @@ export async function readProjectThreadVisibility(codexHome, options = {}) {
     return [];
   }
 
-  const dbPath = stateDbPath(codexHome);
-  try {
-    await fs.access(dbPath);
-  } catch {
+  const resolved = await resolveStateDbPath(codexHome);
+  if (!resolved) {
     return roots.map((root) => ({
       root,
       interactiveThreads: 0,
@@ -276,7 +272,7 @@ export async function readProjectThreadVisibility(codexHome, options = {}) {
 
   let db;
   try {
-    db = new DatabaseSync(dbPath, { readOnly: true });
+    db = new DatabaseSync(resolved.path, { readOnly: true });
     const columns = new Set(db.prepare('PRAGMA table_info("threads")').all().map((column) => column.name));
     if (!columns.has("cwd")) {
       return [];

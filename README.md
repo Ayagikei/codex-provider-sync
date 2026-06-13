@@ -21,7 +21,7 @@ Codex 切换 `model_provider` 后，旧会话可能在 Desktop 或 `/resume` 里
 
 - `~/.codex/sessions`
 - `~/.codex/archived_sessions`
-- `~/.codex/state_5.sqlite`
+- `~/.codex/sqlite/state_5.sqlite`（兼容旧版 `~/.codex/state_5.sqlite`）
 - `.codex-global-state.json` 中的项目根路径缓存
 
 ## 快速使用

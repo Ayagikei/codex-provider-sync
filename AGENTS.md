@@ -15,7 +15,7 @@ For normal Windows users, prefer the GUI app when it is available. Use the CLI w
 The tool works by updating both:
 
 - rollout metadata under `~/.codex/sessions` and `~/.codex/archived_sessions`
-- SQLite thread metadata in `~/.codex/state_5.sqlite`
+- SQLite thread metadata in `~/.codex/sqlite/state_5.sqlite`, falling back to legacy `~/.codex/state_5.sqlite`
 
 Do not solve this by manually editing rollout files only unless the user explicitly asks for manual intervention.
 

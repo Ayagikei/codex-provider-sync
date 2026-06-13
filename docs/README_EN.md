@@ -27,7 +27,7 @@ Typical symptom:
 `codex-provider-sync` fixes that by updating both:
 
 - `~/.codex/sessions` and `~/.codex/archived_sessions`
-- `~/.codex/state_5.sqlite`
+- `~/.codex/sqlite/state_5.sqlite`, falling back to legacy `~/.codex/state_5.sqlite`
 
 ## GUI For Windows
 
