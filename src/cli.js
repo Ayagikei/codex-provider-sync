@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import path from "node:path";
+import readline from "node:readline/promises";
 
-import { DEFAULT_BACKUP_RETENTION_COUNT } from "./constants.js";
+import { DEFAULT_BACKUP_RETENTION_COUNT, DEFAULT_PROVIDER } from "./constants.js";
 import { installWindowsLauncher } from "./launcher.js";
 import { assertSupportedNodeVersion } from "./node-version.js";
 
@@ -17,7 +18,7 @@ function printHelp() {
 Usage:
   codex-provider status [--codex-home PATH]
   codex-provider sync [--provider ID] [--keep N] [--codex-home PATH]
-  codex-provider switch <provider-id> [--keep N] [--codex-home PATH]
+  codex-provider switch [provider-id] [--keep N] [--codex-home PATH]
   codex-provider prune-backups [--keep N] [--codex-home PATH]
   codex-provider restore <backup-dir> [--no-config] [--no-db] [--no-sessions] [--codex-home PATH]
   codex-provider install-windows-launcher [--dir PATH] [--codex-home PATH]
@@ -99,6 +100,48 @@ function summarizePrune(result) {
   ].join("\n");
 }
 
+function formatProviderChoice(provider) {
+  return provider === DEFAULT_PROVIDER ? `${provider} (official)` : provider;
+}
+
+async function promptForProviderChoice(choices, { input = process.stdin, output = process.stdout } = {}) {
+  const providers = choices.configuredProviders ?? [];
+  if (providers.length === 0) {
+    throw new Error("No providers are available in config.toml.");
+  }
+
+  output.write("Select provider:\n");
+  providers.forEach((provider, index) => {
+    const currentMarker = provider === choices.currentProvider ? " *" : "";
+    output.write(`  ${index + 1}. ${formatProviderChoice(provider)}${currentMarker}\n`);
+  });
+
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = (await rl.question("Provider number or id: ")).trim();
+    if (!answer) {
+      throw new Error("Provider selection cannot be empty.");
+    }
+
+    if (/^\d+$/.test(answer)) {
+      const selectedIndex = Number.parseInt(answer, 10) - 1;
+      const selectedProvider = providers[selectedIndex];
+      if (selectedProvider) {
+        return selectedProvider;
+      }
+    }
+
+    const selectedProvider = providers.find((provider) => provider === answer);
+    if (selectedProvider) {
+      return selectedProvider;
+    }
+
+    throw new Error(`Invalid provider selection: ${answer}. Enter a number from 1 to ${providers.length} or one of: ${providers.join(", ")}.`);
+  } finally {
+    rl.close();
+  }
+}
+
 function formatBytes(bytes) {
   const units = ["B", "KB", "MB", "GB", "TB"];
   let value = bytes;
@@ -141,7 +184,11 @@ const SYNC_PROGRESS_STAGE_INDEX = new Map(
 function createSyncProgressReporter() {
   return (event) => {
     if (event?.stage === "update_config" && event.status === "start") {
-      console.log(`Updating config.toml root model_provider to ${event.provider}...`);
+      if (event.provider === DEFAULT_PROVIDER) {
+        console.log("Commenting config.toml root model_provider to use official openai...");
+      } else {
+        console.log(`Updating config.toml root model_provider to ${event.provider}...`);
+      }
       return;
     }
 
@@ -203,8 +250,13 @@ async function main() {
   }
 
   if (command === "switch") {
-    const { runSwitch } = await loadService();
-    const provider = positionals[1] ?? flags.provider;
+    const { getSwitchProviderChoices, runSwitch } = await loadService();
+    let provider = positionals[1] ?? flags.provider;
+    if (!provider) {
+      provider = await promptForProviderChoice(await getSwitchProviderChoices({
+        codexHome: flags["codex-home"]
+      }));
+    }
     const result = await runSwitch({
       codexHome: flags["codex-home"],
       provider,

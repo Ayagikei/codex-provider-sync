@@ -29,6 +29,15 @@ Typical symptom:
 - `~/.codex/sessions` and `~/.codex/archived_sessions`
 - `~/.codex/sqlite/state_5.sqlite`, falling back to legacy `~/.codex/state_5.sqlite`
 
+## Fork Enhancements
+
+This fork adds a few practical fixes for newer Codex Desktop installs and multi-provider switching:
+
+- Prefer the newer SQLite path `~/.codex/sqlite/state_5.sqlite`, with fallback to legacy `~/.codex/state_5.sqlite`.
+- Make `switch` update `config.toml` first, then run a full sync so rollout files, SQLite, and project root cache stay aligned.
+- Allow `codex-provider switch` without a provider id, prompting for a numbered provider choice from `config.toml`.
+- Treat official `openai` as a built-in provider; switching back to it comments out the root `model_provider` line so Codex uses its implicit official default.
+
 ## GUI For Windows
 
 If you want a normal Windows app instead of Node/npm, download `CodexProviderSync.exe` from Releases.
@@ -78,9 +87,13 @@ codex-provider sync
 If you want to change the root `model_provider` and sync history in one step:
 
 ```bash
+codex-provider switch
 codex-provider switch openai
 codex-provider switch apigather
 ```
+
+Without a provider id, `switch` prompts you to choose from providers already present in `config.toml`, plus the built-in official `openai` provider.
+Choosing `openai` comments out the root `model_provider` line and lets Codex use its implicit official default.
 
 If you want a different automatic backup retention count for one run:
 
@@ -123,7 +136,7 @@ Help me fix Codex session visibility with codex-provider-sync.
 Steps:
 1. Run `codex-provider status`.
 2. If my current provider is already correct, run `codex-provider sync`.
-3. If I explicitly want to switch provider, run `codex-provider switch <provider-id>` instead.
+3. If I explicitly want to switch provider, run `codex-provider switch <provider-id>` or `codex-provider switch` for interactive selection instead.
 4. If `state_5.sqlite` is currently in use, tell me to close Codex / Codex App / app-server and retry.
 5. If sync skips locked rollout files, tell me which files were skipped and remind me to rerun `codex-provider sync` later.
 6. Summarize the final provider counts in rollout files and SQLite.
@@ -143,7 +156,7 @@ Quick mapping:
 
 - inspect only: `codex-provider status`
 - fix visibility under current provider: `codex-provider sync`
-- switch provider and sync: `codex-provider switch openai`
+- switch provider and sync: `codex-provider switch` or `codex-provider switch openai`
 - install a desktop double-click launcher: `codex-provider install-windows-launcher`
 - roll back a mistake: `codex-provider restore <backup-dir>`
 
@@ -155,8 +168,9 @@ Quick mapping:
   - syncs history to the current provider
   - `--provider <id>` overrides the target provider
   - if root `model_provider` is missing, it falls back to `openai`
-- `codex-provider switch <provider-id>`
-  - updates root `model_provider` in `config.toml`
+- `codex-provider switch [provider-id]`
+  - updates root `model_provider` in `config.toml`; if the id is omitted, prompts for a numbered provider choice
+  - choosing `openai` comments out the root `model_provider` line to use Codex's implicit official default
   - immediately runs a sync
   - `--keep <n>` overrides how many managed backups are retained after the run
 - `codex-provider prune-backups`
@@ -176,6 +190,7 @@ codex-provider status
 codex-provider sync
 codex-provider sync --keep 5
 codex-provider sync --provider openai
+codex-provider switch
 codex-provider switch openai
 codex-provider switch apigather
 codex-provider prune-backups --keep 5

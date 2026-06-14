@@ -41,6 +41,17 @@ test("setRootProviderInConfigText updates existing root-level model_provider", (
   assert.equal(next, `model_provider = "newapi"\nsandbox_mode = "danger-full-access"\n`);
 });
 
+test("setRootProviderInConfigText comments root-level model_provider for official openai", () => {
+  const input = `model_provider = "apigather"\nsandbox_mode = "danger-full-access"\n`;
+  const next = setRootProviderInConfigText(input, "openai");
+
+  assert.equal(next, `# model_provider = "apigather"\nsandbox_mode = "danger-full-access"\n`);
+  assert.deepEqual(readCurrentProviderFromConfigText(next), {
+    provider: "openai",
+    implicit: true
+  });
+});
+
 test("provider declarations include openai and custom tables", () => {
   const input = `
 [model_providers.apigather]
@@ -50,7 +61,7 @@ base_url = "https://example.com"
 base_url = "https://example.org"
 `;
 
-  assert.deepEqual(listConfiguredProviderIds(input), ["apigather", "newapi", "openai"]);
+  assert.deepEqual(listConfiguredProviderIds(input), ["openai", "apigather", "newapi"]);
   assert.equal(configDeclaresProvider(input, "apigather"), true);
   assert.equal(configDeclaresProvider(input, "missing"), false);
 });

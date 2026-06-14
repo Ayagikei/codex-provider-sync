@@ -48,10 +48,11 @@ Use `codex-provider sync` when:
   - "resync my Codex history"
   - "I already switched provider"
 
-Use `codex-provider switch <provider-id>` when:
+Use `codex-provider switch [provider-id]` when:
 
 - the user wants to change the root `model_provider`
 - the user wants one command to both switch provider and resync history
+- omit `provider-id` only when interactive numbered selection is appropriate
 
 Use `codex-provider restore <backup-dir>` when:
 
@@ -85,7 +86,7 @@ GUI mapping:
 - `sync` uses the current root `model_provider` from `~/.codex/config.toml`
 - if root `model_provider` is missing, `sync` falls back to `openai`
 - `switch` changes root `model_provider`, then runs a sync
-- built-in `openai` is always valid
+- built-in `openai` is always valid and is represented by a missing/commented root `model_provider`
 - custom providers must already exist in `config.toml`
 - the tool does not log the user in and does not manage `auth.json`
 - sync and switch create a backup first, then automatically prune older managed backups
@@ -104,7 +105,7 @@ If sync reports `Skipped locked rollout files`:
 - explain that the active session still holds one or more rollout files open
 - tell the user to rerun `codex-provider sync` after that session ends if they want a full rewrite
 
-If `switch <provider-id>` fails because the provider is missing:
+If `switch [provider-id]` fails because the provider is missing:
 
 - tell the user to define it in `config.toml` or switch via their existing provider tool first
 - then run `codex-provider sync`
@@ -125,6 +126,7 @@ codex-provider status
 codex-provider sync
 codex-provider sync --keep 5
 codex-provider sync --provider openai
+codex-provider switch
 codex-provider switch apigather
 codex-provider prune-backups --keep 5
 codex-provider restore C:\Users\you\.codex\backups_state\provider-sync\20260319T042708906Z
@@ -135,6 +137,7 @@ With an explicit Codex home:
 ```bash
 codex-provider status --codex-home C:\Users\you\.codex
 codex-provider sync --codex-home C:\Users\you\.codex
+codex-provider switch --codex-home C:\Users\you\.codex
 codex-provider switch openai --codex-home C:\Users\you\.codex
 ```
 
@@ -148,7 +151,7 @@ I use codex-provider-sync. Please help me fix Codex session visibility under my 
 Steps:
 1. Run `codex-provider status`.
 2. If my current provider is already correct, run `codex-provider sync`.
-3. If I explicitly tell you to switch provider, run `codex-provider switch <provider-id>` instead.
+3. If I explicitly tell you to switch provider, run `codex-provider switch <provider-id>` or `codex-provider switch` for interactive selection instead.
 4. If SQLite is locked, tell me to close Codex / Codex App / app-server and retry.
 5. If rollout files are skipped because they are locked, tell me which ones were skipped and remind me to rerun sync later.
 6. Summarize the final state of rollout files and SQLite after the command finishes.

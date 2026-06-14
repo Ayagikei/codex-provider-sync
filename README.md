@@ -24,6 +24,15 @@ Codex 切换 `model_provider` 后，旧会话可能在 Desktop 或 `/resume` 里
 - `~/.codex/sqlite/state_5.sqlite`（兼容旧版 `~/.codex/state_5.sqlite`）
 - `.codex-global-state.json` 中的项目根路径缓存
 
+## 本 fork 的增强
+
+这个 fork 在上游基础上补齐了新版 Codex Desktop 和多 provider 切换场景里的几个关键细节：
+
+- 优先同步新版 SQLite 路径 `~/.codex/sqlite/state_5.sqlite`，并保留对旧版 `~/.codex/state_5.sqlite` 的回退。
+- `switch` 会先修改 `config.toml`，随后自动执行完整 `sync`，让 rollout、SQLite 和项目路径缓存保持一致。
+- `codex-provider switch` 可以不传 provider id，直接按编号从 `config.toml` 已配置的 provider 中交互选择。
+- 官方 `openai` 会作为内置 provider 出现在选择列表里；切回官方时会注释掉根级 `model_provider` 行，使用 Codex 的隐式默认 provider。
+
 ## 快速使用
 
 Windows 用户优先下载 Release 里的 `CodexProviderSync.exe`：
@@ -50,6 +59,7 @@ CLI 需要 Node.js `24+`。如果使用 Node 20/22，可能会看到 `node:sqlit
 codex-provider status
 codex-provider sync
 codex-provider sync --provider openai
+codex-provider switch
 codex-provider switch apigather
 codex-provider restore C:\Users\you\.codex\backups_state\provider-sync\<timestamp>
 codex-provider prune-backups --keep 5
@@ -59,9 +69,11 @@ codex-provider prune-backups --keep 5
 
 - `status`：只检查当前 provider、rollout、SQLite、项目可见性诊断。
 - `sync`：不切换登录状态，只把历史会话 metadata 同步到当前 provider。
-- `switch <provider-id>`：修改 `config.toml` 根级 `model_provider`，然后执行同步。
+- `switch [provider-id]`：修改 `config.toml` 根级 `model_provider`，然后执行同步；不传 provider id 时会按编号交互选择。
 - `restore <backup-dir>`：从备份恢复，支持 `--no-config`、`--no-db`、`--no-sessions`。
 - `prune-backups --keep <n>`：只清理本工具创建的旧备份。
+
+选择官方 `openai` provider 时，CLI 会注释掉根级 `model_provider` 行，使用 Codex 的隐式官方默认 provider。
 
 ## 能力边界
 

@@ -190,6 +190,20 @@ export function renderStatus(status) {
   return lines.join("\n");
 }
 
+export async function getSwitchProviderChoices({ codexHome: explicitCodexHome } = {}) {
+  const codexHome = normalizeCodexHome(explicitCodexHome);
+  await ensureCodexHome(codexHome);
+  const configText = await readConfigText(path.join(codexHome, "config.toml"));
+  const current = readCurrentProviderFromConfigText(configText);
+
+  return {
+    codexHome,
+    currentProvider: current.provider,
+    currentProviderImplicit: current.implicit,
+    configuredProviders: listConfiguredProviderIds(configText)
+  };
+}
+
 export async function runSync({
   codexHome: explicitCodexHome,
   provider,

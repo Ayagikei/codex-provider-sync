@@ -230,12 +230,12 @@ async function lockRolloutFile(filePath, shareMode = "None") {
   return child;
 }
 
-async function runCli(args) {
+async function runCli(args, { input } = {}) {
   const cliPath = path.resolve("src", "cli.js");
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cliPath, ...args], {
       cwd: path.resolve("."),
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"]
     });
 
     let stdout = "";
@@ -250,6 +250,9 @@ async function runCli(args) {
     child.once("exit", (code) => {
       resolve({ code, stdout, stderr });
     });
+    if (input !== undefined) {
+      child.stdin.end(input);
+    }
   });
 }
 
@@ -548,6 +551,47 @@ test("runSwitch updates config and syncs provider metadata", async () => {
   const result = await runSwitch({ codexHome, provider: "apigather" });
   assert.equal(result.targetProvider, "apigather");
 
+  const config = await fs.readFile(path.join(codexHome, "config.toml"), "utf8");
+  assert.match(config, /^model_provider = "apigather"/m);
+  const rollout = await fs.readFile(sessionPath, "utf8");
+  assert.match(rollout, /"model_provider":"apigather"/);
+});
+
+test("runSwitch comments model_provider when switching to official openai", async () => {
+  const { codexHome } = await makeTempCodexHome();
+  await writeConfig(codexHome, 'model_provider = "apigather"');
+  const sessionPath = path.join(codexHome, "sessions", "2026", "03", "19", "rollout-openai-switch.jsonl");
+  await writeRollout(sessionPath, "thread-openai-switch", "apigather");
+  await writeStateDb(codexHome, [
+    { id: "thread-openai-switch", model_provider: "apigather", archived: false }
+  ]);
+
+  const result = await runSwitch({ codexHome, provider: "openai" });
+  assert.equal(result.targetProvider, "openai");
+
+  const config = await fs.readFile(path.join(codexHome, "config.toml"), "utf8");
+  assert.match(config, /^# model_provider = "apigather"/m);
+  assert.doesNotMatch(config, /^model_provider\s*=/m);
+  const rollout = await fs.readFile(sessionPath, "utf8");
+  assert.match(rollout, /"model_provider":"openai"/);
+});
+
+test("CLI switch prompts for a provider id when omitted", async () => {
+  const { codexHome } = await makeTempCodexHome();
+  await writeConfig(codexHome);
+  const sessionPath = path.join(codexHome, "sessions", "2026", "03", "19", "rollout-cli-prompt.jsonl");
+  await writeRollout(sessionPath, "thread-cli-prompt", "openai");
+  await writeStateDb(codexHome, [
+    { id: "thread-cli-prompt", model_provider: "openai", archived: false }
+  ]);
+
+  const result = await runCli(["switch", "--codex-home", codexHome], { input: "2\n" });
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /Select provider:/);
+  assert.match(result.stdout, /1\. openai \(official\)/);
+  assert.match(result.stdout, /2\. apigather/);
+  assert.match(result.stdout, /Switched to provider: apigather/);
   const config = await fs.readFile(path.join(codexHome, "config.toml"), "utf8");
   assert.match(config, /^model_provider = "apigather"/m);
   const rollout = await fs.readFile(sessionPath, "utf8");

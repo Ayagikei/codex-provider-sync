@@ -10,6 +10,11 @@ function escapeTomlString(value) {
   return value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
 }
 
+function joinLinesLikeOriginal(lines, originalText) {
+  const nextText = lines.join("\n");
+  return originalText.endsWith("\n") && !nextText.endsWith("\n") ? `${nextText}\n` : nextText;
+}
+
 export async function readConfigText(configPath) {
   return fs.readFile(configPath, "utf8");
 }
@@ -33,12 +38,17 @@ export function readCurrentProviderFromConfigText(configText) {
 }
 
 export function listConfiguredProviderIds(configText) {
-  const providerIds = new Set([DEFAULT_PROVIDER]);
+  const customProviderIds = new Set();
   const regex = /^\[model_providers\.([A-Za-z0-9_.-]+)]\s*$/gm;
   for (const match of configText.matchAll(regex)) {
-    providerIds.add(match[1]);
+    customProviderIds.add(match[1]);
   }
-  return [...providerIds].sort();
+  return [
+    DEFAULT_PROVIDER,
+    ...[...customProviderIds]
+      .filter((providerId) => providerId !== DEFAULT_PROVIDER)
+      .sort((left, right) => left.localeCompare(right))
+  ];
 }
 
 export function configDeclaresProvider(configText, provider) {
@@ -46,6 +56,10 @@ export function configDeclaresProvider(configText, provider) {
 }
 
 export function setRootProviderInConfigText(configText, provider) {
+  if (provider === DEFAULT_PROVIDER) {
+    return commentRootProviderInConfigText(configText);
+  }
+
   const lines = splitLines(configText);
   let insertIndex = lines.length;
 
@@ -61,14 +75,35 @@ export function setRootProviderInConfigText(configText, provider) {
     }
     if (/^model_provider\s*=/.test(trimmed)) {
       lines[index] = `model_provider = "${escapeTomlString(provider)}"`;
-      return `${lines.join("\n")}${configText.endsWith("\n") ? "\n" : ""}`.replace(/\n\n$/, "\n");
+      return joinLinesLikeOriginal(lines, configText);
     }
     insertIndex = index + 1;
   }
 
   lines.splice(insertIndex, 0, `model_provider = "${escapeTomlString(provider)}"`);
-  const nextText = lines.join("\n");
-  return configText.endsWith("\n") ? `${nextText}\n` : nextText;
+  return joinLinesLikeOriginal(lines, configText);
+}
+
+function commentRootProviderInConfigText(configText) {
+  const lines = splitLines(configText);
+  let changed = false;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const trimmed = lines[index].trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+    if (trimmed.startsWith("[")) {
+      break;
+    }
+    if (/^model_provider\s*=/.test(trimmed)) {
+      const leadingWhitespace = lines[index].match(/^\s*/)?.[0] ?? "";
+      lines[index] = `${leadingWhitespace}# ${lines[index].slice(leadingWhitespace.length)}`;
+      changed = true;
+    }
+  }
+
+  return changed ? joinLinesLikeOriginal(lines, configText) : configText;
 }
 
 export async function writeConfigText(configPath, configText) {
